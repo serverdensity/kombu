@@ -16,7 +16,7 @@ from kombu.syn import detect_environment
 
 DEFAULT_TRANSPORT = 'amqp'
 
-AMQP_TRANSPORT = 'kombu.transport.amqplib.Transport'
+AMQP_TRANSPORT = 'kombu.transport.pyamqp.Transport'
 AMQP_ALIAS = 'librabbitmq'
 if detect_environment() == 'default':
     try:
@@ -49,7 +49,8 @@ def _ghettoq(name, new, alias=None):
 
 TRANSPORT_ALIASES = {
     'amqp': AMQP_TRANSPORT,
-    'amqplib': 'kombu.transport.amqplib.Transport',
+    'amqplib': 'kombu.transport.pyamqp.Transport',
+    'pyamqp': 'kombu.transport.pyamqp.Transport',
     'librabbitmq': 'kombu.transport.librabbitmq.Transport',
     'pika': 'kombu.transport.pika2.Transport',
     'oldpika': 'kombu.transport.pika.SyncTransport',
@@ -97,7 +98,7 @@ def get_transport_cls(transport=None):
 
     The transport string is the full path to a transport class, e.g.::
 
-        "kombu.transport.amqplib.Transport"
+        "kombu.transport.pyamqp.Transport"
 
     If the name does not include `"."` (is not fully qualified),
     the alias table will be consulted.
