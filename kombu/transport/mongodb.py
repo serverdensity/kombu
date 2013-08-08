@@ -48,6 +48,7 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         try:
             if queue in self._fanout_queues:
+                self._ensure_cursor(queue)
                 msg = next(self._queue_cursors[queue])
                 self._queue_readcounts[queue] += 1
                 return loads(msg['payload'])
@@ -71,6 +72,7 @@ class Channel(virtual.Channel):
 
     def _size(self, queue):
         if queue in self._fanout_queues:
+            self._ensure_cursor(queue)
             return (self._queue_cursors[queue].count() -
                     self._queue_readcounts[queue])
 
@@ -165,12 +167,7 @@ class Channel(virtual.Channel):
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         if self.typeof(exchange).type == 'fanout':
-            cursor = self.bcast.find(query={'queue': exchange},
-                                     sort=[('$natural', 1)], tailable=True)
-            # Fast forward the cursor past old events
-            self._queue_cursors[queue] = cursor.skip(cursor.count())
-            self._queue_readcounts[queue] = cursor.count()
-            self._fanout_queues[queue] = exchange
+            self._ensure_cursor(queue)
 
         meta = {'exchange': exchange,
                 'queue': queue,
@@ -182,8 +179,9 @@ class Channel(virtual.Channel):
         self.routing.remove({'queue': queue})
         super(Channel, self).queue_delete(queue, **kwargs)
         if queue in self._fanout_queues:
-            self._queue_cursors[queue].close()
-            self._queue_cursors.pop(queue, None)
+            cursor = self._queue_cursors.pop(queue, None)
+            if cursor is not None:
+                cursor.close()
             self._fanout_queues.pop(queue, None)
 
     @property
@@ -191,6 +189,17 @@ class Channel(virtual.Channel):
         if self._client is None:
             self._client = self._open()
         return self._client
+
+    def _ensure_cursor(self, queue):
+        self.client
+        exchange = self._fanout_queues[queue]
+        if queue not in self._queue_cursors:
+            cursor = self.bcast.find(query={'queue': exchange},
+                             sort=[('$natural', 1)], tailable=True)
+            # Fast forward the cursor past old events
+            count = cursor.count()
+            self._queue_cursors[queue] = cursor.skip(count)
+            self._queue_readcounts[queue] = count
 
 
 class Transport(virtual.Transport):
